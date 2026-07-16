@@ -48,7 +48,6 @@ jobs:
           terraform destroy -auto-approve -input=false -no-color \
             -var="mi_ip=${{ secrets.MI_IP }}" \
             -var="key_name=${{ secrets.KEY_NAME }}" \
-            -var="db_master_password=${{ secrets.DB_PASSWORD }}" \
             -var="existing_vpc_id=${{ vars.EXISTING_VPC_ID || '' }}" 2>&1 | tee tfdestroy.log
           echo "---"
           echo "Ultimas 50 lineas del log:"

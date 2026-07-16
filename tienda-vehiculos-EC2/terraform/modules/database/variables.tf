@@ -3,11 +3,6 @@ variable "proyecto" {
   type        = string
 }
 
-variable "vpc_id" {
-  description = "ID de la VPC"
-  type        = string
-}
-
 variable "subnet_ids" {
   description = "IDs de las subnets privadas para RDS"
   type        = list(string)
@@ -21,12 +16,6 @@ variable "sg_rds_id" {
 variable "db_master_user" {
   description = "Usuario master de RDS"
   type        = string
-}
-
-variable "db_master_password" {
-  description = "Contrasena master de RDS"
-  type        = string
-  sensitive   = true
 }
 
 variable "db_name" {

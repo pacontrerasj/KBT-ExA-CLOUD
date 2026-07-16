@@ -36,3 +36,9 @@ output "vpc_id" {
   description = "ID de la VPC creada"
   value       = module.networking.vpc_id
 }
+
+output "db_password" {
+  description = "Password generado automaticamente para RDS"
+  value       = module.database.db_password
+  sensitive   = true
+}

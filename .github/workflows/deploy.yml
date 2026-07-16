@@ -61,7 +61,6 @@ jobs:
           terraform plan -no-color -out=tfplan \
             -var="mi_ip=${{ secrets.MI_IP }}" \
             -var="key_name=${{ secrets.KEY_NAME }}" \
-            -var="db_master_password=${{ secrets.DB_PASSWORD }}" \
             -var="existing_vpc_id=${{ vars.EXISTING_VPC_ID || '' }}" 2>&1 | tee tfplan.log
 
       - name: Terraform Apply
@@ -70,7 +69,6 @@ jobs:
           terraform apply -auto-approve -input=false -no-color \
             -var="mi_ip=${{ secrets.MI_IP }}" \
             -var="key_name=${{ secrets.KEY_NAME }}" \
-            -var="db_master_password=${{ secrets.DB_PASSWORD }}" \
             -var="existing_vpc_id=${{ vars.EXISTING_VPC_ID || '' }}" 2>&1 | tee tfapply.log
           echo "---"
           echo "Ultimas 50 lineas del log:"
@@ -89,6 +87,9 @@ jobs:
           echo "ECR_BACKEND=$(safe_output ecr_backend_url)" >> $GITHUB_OUTPUT
           echo "RDS_ENDPOINT=$(safe_output rds_endpoint)" >> $GITHUB_OUTPUT
           echo "RDS_PORT=$(safe_output rds_port)" >> $GITHUB_OUTPUT
+          DB_PASS=$(safe_output db_password)
+          echo "::add-mask::$DB_PASS"
+          echo "DB_PASSWORD=$DB_PASS" >> $GITHUB_OUTPUT
 
     outputs:
       ec2_host: ${{ steps.outputs.outputs.EC2_HOST }}
@@ -96,6 +97,7 @@ jobs:
       ecr_backend: ${{ steps.outputs.outputs.ECR_BACKEND }}
       rds_endpoint: ${{ steps.outputs.outputs.RDS_ENDPOINT }}
       rds_port: ${{ steps.outputs.outputs.RDS_PORT }}
+      db_password: ${{ steps.outputs.outputs.DB_PASSWORD }}
 
   build-and-push:
     needs: terraform
@@ -177,8 +179,8 @@ jobs:
             export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
             export AWS_REGION=${{ env.AWS_REGION }}
             export DB_HOST=${{ needs.terraform.outputs.rds_endpoint }}
-            export DB_USER=${{ secrets.DB_USER }}
-            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            export DB_USER=${{ secrets.DB_USER || 'admin' }}
+            export DB_PASSWORD=${{ needs.terraform.outputs.db_password }}
             export DB_NAME=${{ vars.DB_NAME || 'tienda_vehiculos' }}
             export DB_PORT=${{ needs.terraform.outputs.rds_port }}
             export IMAGE_TAG=${{ github.sha }}

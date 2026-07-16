@@ -48,12 +48,6 @@ variable "db_master_user" {
   default     = "admin"
 }
 
-variable "db_master_password" {
-  description = "Contrasena master de la base de datos RDS"
-  type        = string
-  sensitive   = true
-}
-
 variable "db_name" {
   description = "Nombre de la base de datos a crear en RDS"
   type        = string

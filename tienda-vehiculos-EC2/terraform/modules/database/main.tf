@@ -2,6 +2,14 @@
 # Database — RDS MySQL
 # ============================================================
 
+# ──── Password generada automaticamente ────
+
+resource "random_password" "master" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*"
+}
+
 # ──── Subnet Group para RDS (en subnets privadas) ────
 
 resource "aws_db_subnet_group" "rds" {
@@ -24,7 +32,7 @@ resource "aws_db_instance" "rds" {
 
   db_name                = var.db_name
   username               = var.db_master_user
-  password               = var.db_master_password
+  password               = random_password.master.result
   port                   = 3306
 
   db_subnet_group_name   = aws_db_subnet_group.rds.name

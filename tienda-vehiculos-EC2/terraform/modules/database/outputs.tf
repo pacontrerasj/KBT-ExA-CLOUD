@@ -12,3 +12,9 @@ output "rds_id" {
   description = "Identificador del RDS"
   value       = aws_db_instance.rds.id
 }
+
+output "db_password" {
+  description = "Password generado automaticamente para RDS"
+  value       = random_password.master.result
+  sensitive   = true
+}
