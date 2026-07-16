@@ -43,8 +43,7 @@ jobs:
           terraform apply -auto-approve \
             -var="mi_ip=${{ secrets.MI_IP }}" \
             -var="key_name=${{ secrets.KEY_NAME }}" \
-            -var="db_master_password=${{ secrets.DB_PASSWORD }}" \
-            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}"
+            -var="db_master_password=${{ secrets.DB_PASSWORD }}"
 
       - name: Obtener outputs
         id: outputs
@@ -53,12 +52,14 @@ jobs:
           echo "ECR_FRONTEND=$(terraform output -raw ecr_frontend_url)" >> $GITHUB_OUTPUT
           echo "ECR_BACKEND=$(terraform output -raw ecr_backend_url)" >> $GITHUB_OUTPUT
           echo "RDS_ENDPOINT=$(terraform output -raw rds_endpoint)" >> $GITHUB_OUTPUT
+          echo "RDS_PORT=$(terraform output -raw rds_port)" >> $GITHUB_OUTPUT
 
     outputs:
       ec2_host: ${{ steps.outputs.outputs.EC2_HOST }}
       ecr_frontend: ${{ steps.outputs.outputs.ECR_FRONTEND }}
       ecr_backend: ${{ steps.outputs.outputs.ECR_BACKEND }}
       rds_endpoint: ${{ steps.outputs.outputs.RDS_ENDPOINT }}
+      rds_port: ${{ steps.outputs.outputs.RDS_PORT }}
 
   build-and-push:
     needs: terraform
@@ -105,15 +106,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Obtener token ECR
+        id: ecr
+        run: |
+          PASSWORD=$(aws ecr get-login-password --region ${{ env.AWS_REGION }})
+          echo "::add-mask::$PASSWORD"
+          echo "ecr_password=$PASSWORD" >> $GITHUB_OUTPUT
+
       - name: Copiar docker-compose.yml a EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ needs.terraform.outputs.ec2_host }}
           username: ${{ vars.EC2_USER || 'ec2-user' }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: tienda-vehiculos-EC2/docker-compose.yml
-          target: ${{ env.APP_DIR }}
-          strip_components: 1
+          source: "tienda-vehiculos-EC2/docker-compose.yml"
+          target: ${{ env.APP_DIR }}/
 
       - name: Deploy via SSH a EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -123,26 +138,27 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            export AWS_REGION=${{ env.AWS_REGION }}
             export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
+            export AWS_REGION=${{ env.AWS_REGION }}
             export DB_HOST=${{ needs.terraform.outputs.rds_endpoint }}
             export DB_USER=${{ secrets.DB_USER }}
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             export DB_NAME=${{ vars.DB_NAME || 'tienda_vehiculos' }}
+            export DB_PORT=${{ needs.terraform.outputs.rds_port }}
             export IMAGE_TAG=${{ github.sha }}
+            export ECR_PASSWORD='${{ steps.ecr.outputs.ecr_password }}'
 
             cd ${{ env.APP_DIR }}
 
-            # Escribir .env con endpoint real de RDS
             cat > .env << EOF
             DB_HOST=${DB_HOST}
             DB_USER=${DB_USER}
             DB_PASSWORD=${DB_PASSWORD}
             DB_NAME=${DB_NAME}
-            DB_PORT=3306
+            DB_PORT=${DB_PORT}
             EOF
 
-            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+            echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
             docker compose pull
             docker compose up -d
             docker system prune -af

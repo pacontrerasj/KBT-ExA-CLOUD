@@ -45,7 +45,6 @@ module "compute" {
   source = "./modules/compute"
 
   proyecto           = var.proyecto
-  vpc_id             = module.networking.vpc_id
   subnet_id          = module.networking.subnet_publica_id
   sg_ec2_id          = module.networking.sg_ec2_id
   instance_type      = var.instance_type
@@ -55,8 +54,6 @@ module "compute" {
   db_password        = var.db_master_password
   db_name            = var.db_name
   db_port            = module.database.rds_port
-  aws_account_id     = var.aws_account_id
-  aws_region         = var.aws_region
 }
 
 # ──── Módulo de ECR ────

@@ -28,8 +28,6 @@ locals {
     db_password = var.db_password
     db_name     = var.db_name
     db_port     = var.db_port
-    aws_account_id = var.aws_account_id
-    aws_region  = var.aws_region
   })
 }
 

@@ -15,4 +15,3 @@ key_name           = "mi-key-pair"               # Key Pair ya creado en AWS
 db_master_user     = "admin"
 db_master_password = "CambiaEstaContrasena123"   # Cambiar
 db_name            = "tienda_vehiculos"
-aws_account_id     = "123456789012"              # Tu ID de cuenta AWS

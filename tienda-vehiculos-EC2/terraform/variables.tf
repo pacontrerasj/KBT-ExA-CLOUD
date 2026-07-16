@@ -59,8 +59,3 @@ variable "db_name" {
   type        = string
   default     = "tienda_vehiculos"
 }
-
-variable "aws_account_id" {
-  description = "ID de la cuenta AWS (12 digitos). Se usa para las URLs de ECR"
-  type        = string
-}
