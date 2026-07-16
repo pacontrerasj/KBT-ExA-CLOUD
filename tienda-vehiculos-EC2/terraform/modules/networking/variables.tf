@@ -14,6 +14,11 @@ variable "azs" {
 }
 
 variable "mi_ip" {
-  description = "IP publica para SSH en formato CIDR"
+  description = "Tu IP publica en formato CIDR (ej: 201.123.45.67/32). Permite SSH a la EC2"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+$", var.mi_ip))
+    error_message = "mi_ip debe ser una IP valida en formato CIDR (ej: 201.123.45.67/32)."
+  }
 }

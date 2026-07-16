@@ -94,7 +94,7 @@ resource "aws_route_table_association" "privada" {
 # ──── Security Groups ────
 
 resource "aws_security_group" "sg_ec2" {
-  name        = "sg-ec2-${var.proyecto}"
+  name_prefix = "ec2-${var.proyecto}-"
   description = "Permite SSH desde mi IP y HTTP desde internet"
   vpc_id      = aws_vpc.vpc.id
 
@@ -133,7 +133,7 @@ resource "aws_security_group" "sg_ec2" {
 }
 
 resource "aws_security_group" "sg_rds" {
-  name        = "sg-rds-${var.proyecto}"
+  name_prefix = "rds-${var.proyecto}-"
   description = "Permite MySQL solo desde el SG de la EC2"
   vpc_id      = aws_vpc.vpc.id
 
