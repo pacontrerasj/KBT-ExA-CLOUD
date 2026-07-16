@@ -1,0 +1,134 @@
+name: Deploy a EC2 via Terraform + ECR
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  TF_ROOT: terraform
+
+jobs:
+  terraform:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.TF_ROOT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve \
+            -var="mi_ip=${{ secrets.MI_IP }}" \
+            -var="key_name=${{ secrets.KEY_NAME }}" \
+            -var="db_master_password=${{ secrets.DB_PASSWORD }}" \
+            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}"
+
+      - name: Obtener outputs
+        id: outputs
+        run: |
+          echo "EC2_HOST=$(terraform output -raw ec2_public_ip)" >> $GITHUB_OUTPUT
+          echo "ECR_FRONTEND=$(terraform output -raw ecr_frontend_url)" >> $GITHUB_OUTPUT
+          echo "ECR_BACKEND=$(terraform output -raw ecr_backend_url)" >> $GITHUB_OUTPUT
+          echo "RDS_ENDPOINT=$(terraform output -raw rds_endpoint)" >> $GITHUB_OUTPUT
+
+    outputs:
+      ec2_host: ${{ steps.outputs.outputs.EC2_HOST }}
+      ecr_frontend: ${{ steps.outputs.outputs.ECR_FRONTEND }}
+      ecr_backend: ${{ steps.outputs.outputs.ECR_BACKEND }}
+      rds_endpoint: ${{ steps.outputs.outputs.RDS_ENDPOINT }}
+
+  build-and-push:
+    needs: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login a Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build y push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: tienda-vehiculos-frontend
+          file: tienda-vehiculos-frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ needs.terraform.outputs.ecr_frontend }}:${{ github.sha }}
+            ${{ needs.terraform.outputs.ecr_frontend }}:latest
+
+      - name: Build y push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: tienda-vehiculos-backend
+          file: tienda-vehiculos-backend/Dockerfile
+          push: true
+          tags: |
+            ${{ needs.terraform.outputs.ecr_backend }}:${{ github.sha }}
+            ${{ needs.terraform.outputs.ecr_backend }}:latest
+
+  deploy:
+    needs: [terraform, build-and-push]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH a EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ needs.terraform.outputs.ec2_host }}
+          username: ${{ vars.EC2_USER || 'ec2-user' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            export AWS_REGION=${{ env.AWS_REGION }}
+            export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
+            export DB_HOST=${{ needs.terraform.outputs.rds_endpoint }}
+            export DB_USER=${{ secrets.DB_USER }}
+            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            export DB_NAME=${{ vars.DB_NAME || 'tienda_vehiculos' }}
+            export IMAGE_TAG=${{ github.sha }}
+
+            cd /home/ec2-user/tienda-vehiculos
+
+            # Actualizar .env con endpoint real de RDS
+            cat > .env << EOF
+            DB_HOST=${DB_HOST}
+            DB_USER=${DB_USER}
+            DB_PASSWORD=${DB_PASSWORD}
+            DB_NAME=${DB_NAME}
+            DB_PORT=3306
+            EOF
+
+            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+            docker compose pull
+            docker compose up -d
+            docker system prune -af

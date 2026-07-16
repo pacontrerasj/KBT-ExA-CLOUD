@@ -1,0 +1,32 @@
+## Crear servicio
+sudo vim /etc/systemd/system/app-compose.service
+## Pegar siguiente contenido
+
+[Unit]
+Description=Start app via Docker Compose
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ec2-user
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+RemainAfterExit=yes
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+
+## Cargar servicio
+sudo systemctl daemon-reload
+## habilitar servicio
+sudo systemctl enable app-compose.service
+## Subir servicio
+sudo systemctl start app-compose.service
+## Probar bajada
+sudo systemctl stop app-compose.service
+## Probar reiniciando
+sudo reboot
+## Comprobar estado de los Docker frontend y backend
+sudo systemctl status app-compose.service
