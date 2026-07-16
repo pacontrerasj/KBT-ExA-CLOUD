@@ -2,9 +2,22 @@
 # Networking — VPC, subnets, IGW, route tables, Security Groups
 # ============================================================
 
-# ──── VPC ────
+locals {
+  vpc_id = var.existing_vpc_id != "" ? data.aws_vpc.selected[0].id : aws_vpc.vpc[0].id
+}
+
+# ──── VPC Existente (data source) ────
+
+data "aws_vpc" "selected" {
+  count = var.existing_vpc_id != "" ? 1 : 0
+  id    = var.existing_vpc_id
+}
+
+# ──── VPC Nueva ────
 
 resource "aws_vpc" "vpc" {
+  count = var.existing_vpc_id == "" ? 1 : 0
+
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
@@ -16,7 +29,7 @@ resource "aws_vpc" "vpc" {
 
 resource "aws_subnet" "publica" {
   count                   = length(var.azs)
-  vpc_id                  = aws_vpc.vpc.id
+  vpc_id                  = local.vpc_id
   cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)
   availability_zone       = var.azs[count.index]
   map_public_ip_on_launch = true
@@ -28,7 +41,7 @@ resource "aws_subnet" "publica" {
 
 resource "aws_subnet" "privada" {
   count             = length(var.azs)
-  vpc_id            = aws_vpc.vpc.id
+  vpc_id            = local.vpc_id
   cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + length(var.azs))
   availability_zone = var.azs[count.index]
 
@@ -38,7 +51,7 @@ resource "aws_subnet" "privada" {
 # ──── Internet Gateway ────
 
 resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.vpc.id
+  vpc_id = local.vpc_id
   tags   = { Name = "igw-${var.proyecto}" }
 }
 
@@ -58,7 +71,7 @@ resource "aws_nat_gateway" "nat" {
 # ──── Route Tables ────
 
 resource "aws_route_table" "publica" {
-  vpc_id = aws_vpc.vpc.id
+  vpc_id = local.vpc_id
 
   route {
     cidr_block = "0.0.0.0/0"
@@ -69,7 +82,7 @@ resource "aws_route_table" "publica" {
 }
 
 resource "aws_route_table" "privada" {
-  vpc_id = aws_vpc.vpc.id
+  vpc_id = local.vpc_id
 
   route {
     cidr_block     = "0.0.0.0/0"
@@ -96,7 +109,7 @@ resource "aws_route_table_association" "privada" {
 resource "aws_security_group" "sg_ec2" {
   name_prefix = "ec2-${var.proyecto}-"
   description = "Permite SSH desde mi IP y HTTP desde internet"
-  vpc_id      = aws_vpc.vpc.id
+  vpc_id      = local.vpc_id
 
   ingress {
     description = "SSH desde mi IP"
@@ -135,7 +148,7 @@ resource "aws_security_group" "sg_ec2" {
 resource "aws_security_group" "sg_rds" {
   name_prefix = "rds-${var.proyecto}-"
   description = "Permite MySQL solo desde el SG de la EC2"
-  vpc_id      = aws_vpc.vpc.id
+  vpc_id      = local.vpc_id
 
   ingress {
     description     = "MySQL desde EC2"

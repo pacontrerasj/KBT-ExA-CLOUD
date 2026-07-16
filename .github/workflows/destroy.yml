@@ -1,0 +1,55 @@
+name: "Terraform Destroy"
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: 'Escribe "yes" para confirmar la destruccion'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  TF_ROOT: tienda-vehiculos-EC2/terraform
+
+jobs:
+  destroy:
+    name: "Terraform Destroy"
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm_destroy == 'yes'
+
+    defaults:
+      run:
+        working-directory: ${{ env.TF_ROOT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform Init
+        run: terraform init -reconfigure -input=false -no-color
+
+      - name: Terraform Destroy
+        run: |
+          set -o pipefail
+          terraform destroy -auto-approve -input=false -no-color \
+            -var="mi_ip=${{ secrets.MI_IP }}" \
+            -var="key_name=${{ secrets.KEY_NAME }}" \
+            -var="db_master_password=${{ secrets.DB_PASSWORD }}" \
+            -var="existing_vpc_id=${{ vars.EXISTING_VPC_ID || '' }}" 2>&1 | tee tfdestroy.log
+          echo "---"
+          echo "Ultimas 50 lineas del log:"
+          tail -n 50 tfdestroy.log

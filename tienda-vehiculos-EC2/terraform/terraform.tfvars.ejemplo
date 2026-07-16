@@ -15,3 +15,4 @@ key_name           = "mi-key-pair"               # Key Pair ya creado en AWS
 db_master_user     = "admin"
 db_master_password = "CambiaEstaContrasena123"   # Cambiar
 db_name            = "tienda_vehiculos"
+existing_vpc_id    = ""                          # Dejar vacio para crear nueva VPC, o poner ID de VPC existente

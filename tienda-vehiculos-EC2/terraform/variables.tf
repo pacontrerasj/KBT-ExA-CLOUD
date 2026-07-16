@@ -59,3 +59,9 @@ variable "db_name" {
   type        = string
   default     = "tienda_vehiculos"
 }
+
+variable "existing_vpc_id" {
+  description = "ID de una VPC existente. Si se proporciona, no se crea una nueva VPC (resuelve limite de VPCs)"
+  type        = string
+  default     = ""
+}

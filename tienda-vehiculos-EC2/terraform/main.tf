@@ -19,10 +19,11 @@ provider "aws" {
 module "networking" {
   source = "./modules/networking"
 
-  proyecto    = var.proyecto
-  vpc_cidr    = var.vpc_cidr
-  azs         = var.azs
-  mi_ip       = var.mi_ip
+  proyecto        = var.proyecto
+  vpc_cidr        = var.vpc_cidr
+  azs             = var.azs
+  mi_ip           = var.mi_ip
+  existing_vpc_id = var.existing_vpc_id
 }
 
 # ──── Módulo de Base de Datos ────

@@ -22,3 +22,9 @@ variable "mi_ip" {
     error_message = "mi_ip debe ser una IP valida en formato CIDR (ej: 201.123.45.67/32)."
   }
 }
+
+variable "existing_vpc_id" {
+  description = "ID de una VPC existente. Si se proporciona, no se crea una nueva VPC."
+  type        = string
+  default     = ""
+}
