@@ -30,6 +30,22 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Validar secrets requeridos
+        run: |
+          required=(AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY MI_IP KEY_NAME DB_PASSWORD)
+          missing=()
+          for s in "${required[@]}"; do
+            val="${{ secrets[format('{0}', s)] }}"
+            if [ -z "$val" ]; then
+              missing+=("$s")
+            fi
+          done
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "❌ Secrets faltantes: ${missing[*]}"
+            exit 1
+          fi
+          echo "✅ Todos los secrets requeridos estan configurados"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -38,21 +54,36 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Apply
+      - name: Terraform Plan
         run: |
-          terraform apply -auto-approve \
+          terraform plan -no-color -out=tfplan \
             -var="mi_ip=${{ secrets.MI_IP }}" \
             -var="key_name=${{ secrets.KEY_NAME }}" \
-            -var="db_master_password=${{ secrets.DB_PASSWORD }}"
+            -var="db_master_password=${{ secrets.DB_PASSWORD }}" 2>&1 | tee tfplan.log
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve -input=false -no-color \
+            -var="mi_ip=${{ secrets.MI_IP }}" \
+            -var="key_name=${{ secrets.KEY_NAME }}" \
+            -var="db_master_password=${{ secrets.DB_PASSWORD }}" 2>&1 | tee tfapply.log
+          echo "---"
+          echo "Ultimas 50 lineas del log:"
+          tail -n 50 tfapply.log
 
       - name: Obtener outputs
         id: outputs
+        if: success()
         run: |
-          echo "EC2_HOST=$(terraform output -raw ec2_public_ip)" >> $GITHUB_OUTPUT
-          echo "ECR_FRONTEND=$(terraform output -raw ecr_frontend_url)" >> $GITHUB_OUTPUT
-          echo "ECR_BACKEND=$(terraform output -raw ecr_backend_url)" >> $GITHUB_OUTPUT
-          echo "RDS_ENDPOINT=$(terraform output -raw rds_endpoint)" >> $GITHUB_OUTPUT
-          echo "RDS_PORT=$(terraform output -raw rds_port)" >> $GITHUB_OUTPUT
+          safe_output() {
+            val=$(terraform output -raw "$1" 2>/dev/null || echo "")
+            echo "$val"
+          }
+          echo "EC2_HOST=$(safe_output ec2_public_ip)" >> $GITHUB_OUTPUT
+          echo "ECR_FRONTEND=$(safe_output ecr_frontend_url)" >> $GITHUB_OUTPUT
+          echo "ECR_BACKEND=$(safe_output ecr_backend_url)" >> $GITHUB_OUTPUT
+          echo "RDS_ENDPOINT=$(safe_output rds_endpoint)" >> $GITHUB_OUTPUT
+          echo "RDS_PORT=$(safe_output rds_port)" >> $GITHUB_OUTPUT
 
     outputs:
       ec2_host: ${{ steps.outputs.outputs.EC2_HOST }}
