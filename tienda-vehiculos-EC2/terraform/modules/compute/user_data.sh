@@ -44,11 +44,11 @@ cd /home/ec2-user/tienda-vehiculos
 # ──── Crear archivo .env ────
 
 cat > /home/ec2-user/tienda-vehiculos/.env <<EOF
-DB_HOST=${DB_HOST}
-DB_USER=${DB_USER}
-DB_PASSWORD=${DB_PASSWORD}
-DB_NAME=${DB_NAME}
-DB_PORT=${DB_PORT}
+DB_HOST=${db_host}
+DB_USER=${db_user}
+DB_PASSWORD=${db_password}
+DB_NAME=${db_name}
+DB_PORT=${db_port}
 EOF
 
 # ──── Autenticarse en ECR ────
