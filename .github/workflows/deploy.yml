@@ -36,9 +36,19 @@ jobs:
           terraform_version: 1.8.5
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -reconfigure -input=false -no-color
 
-      - name: Limpiar recursos existentes (apply parcial anterior)
+      - name: Verificar si ya hay state en S3
+        id: check_state
+        run: |
+          if aws s3api head-object --bucket tfstate-908345399651-tienda-vehiculos --key infra/terraform.tfstate 2>/dev/null; then
+            echo "STATE_EXISTS=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "STATE_EXISTS=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Limpiar recursos de apply previo (solo si no hay state)
+        if: steps.check_state.outputs.STATE_EXISTS == 'false'
         continue-on-error: true
         run: |
           aws ecr delete-repository --repository-name tienda-vehiculos-frontend --force 2>/dev/null || true
