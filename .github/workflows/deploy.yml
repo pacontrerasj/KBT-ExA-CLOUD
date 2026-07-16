@@ -40,6 +40,7 @@ jobs:
 
       - name: Terraform Plan
         run: |
+          set -o pipefail
           terraform plan -no-color -out=tfplan \
             -var="mi_ip=${{ secrets.MI_IP }}" \
             -var="key_name=${{ secrets.KEY_NAME }}" \
@@ -47,6 +48,7 @@ jobs:
 
       - name: Terraform Apply
         run: |
+          set -o pipefail
           terraform apply -auto-approve -input=false -no-color \
             -var="mi_ip=${{ secrets.MI_IP }}" \
             -var="key_name=${{ secrets.KEY_NAME }}" \
