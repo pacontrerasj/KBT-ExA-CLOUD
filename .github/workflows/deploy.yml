@@ -164,7 +164,7 @@ jobs:
         with:
           host: ${{ needs.terraform.outputs.ec2_host }}
           username: ${{ vars.EC2_USER || 'ec2-user' }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "tienda-vehiculos-EC2/docker-compose.yml"
           target: ${{ env.APP_DIR }}/
 
@@ -173,7 +173,7 @@ jobs:
         with:
           host: ${{ needs.terraform.outputs.ec2_host }}
           username: ${{ vars.EC2_USER || 'ec2-user' }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
             export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
