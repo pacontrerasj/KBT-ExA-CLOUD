@@ -52,3 +52,16 @@ resource "aws_instance" "ec2" {
     Name = "ec2-${var.proyecto}"
   }
 }
+
+# ──── Elastic IP (IP publica fija) ────
+
+resource "aws_eip" "ec2" {
+  instance = aws_instance.ec2.id
+  domain   = "vpc"
+
+  tags = {
+    Name = "eip-ec2-${var.proyecto}"
+  }
+
+  depends_on = [aws_instance.ec2]
+}

@@ -4,8 +4,8 @@ output "ec2_id" {
 }
 
 output "ec2_public_ip" {
-  description = "IP publica de la EC2"
-  value       = aws_instance.ec2.public_ip
+  description = "IP publica fija (Elastic IP) de la EC2"
+  value       = aws_eip.ec2.public_ip
 }
 
 output "ec2_public_dns" {
