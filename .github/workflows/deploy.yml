@@ -7,7 +7,8 @@ on:
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-  TF_ROOT: terraform
+  TF_ROOT: tienda-vehiculos-EC2/terraform
+  APP_DIR: /home/ec2-user/tienda-vehiculos
 
 jobs:
   terraform:
@@ -80,8 +81,8 @@ jobs:
       - name: Build y push frontend
         uses: docker/build-push-action@v5
         with:
-          context: tienda-vehiculos-frontend
-          file: tienda-vehiculos-frontend/Dockerfile
+          context: tienda-vehiculos-EC2/tienda-vehiculos-frontend
+          file: tienda-vehiculos-EC2/tienda-vehiculos-frontend/Dockerfile
           push: true
           tags: |
             ${{ needs.terraform.outputs.ecr_frontend }}:${{ github.sha }}
@@ -90,8 +91,8 @@ jobs:
       - name: Build y push backend
         uses: docker/build-push-action@v5
         with:
-          context: tienda-vehiculos-backend
-          file: tienda-vehiculos-backend/Dockerfile
+          context: tienda-vehiculos-EC2/tienda-vehiculos-backend
+          file: tienda-vehiculos-EC2/tienda-vehiculos-backend/Dockerfile
           push: true
           tags: |
             ${{ needs.terraform.outputs.ecr_backend }}:${{ github.sha }}
@@ -101,6 +102,19 @@ jobs:
     needs: [terraform, build-and-push]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copiar docker-compose.yml a EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ needs.terraform.outputs.ec2_host }}
+          username: ${{ vars.EC2_USER || 'ec2-user' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: tienda-vehiculos-EC2/docker-compose.yml
+          target: ${{ env.APP_DIR }}
+          strip_components: 1
+
       - name: Deploy via SSH a EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -117,9 +131,9 @@ jobs:
             export DB_NAME=${{ vars.DB_NAME || 'tienda_vehiculos' }}
             export IMAGE_TAG=${{ github.sha }}
 
-            cd /home/ec2-user/tienda-vehiculos
+            cd ${{ env.APP_DIR }}
 
-            # Actualizar .env con endpoint real de RDS
+            # Escribir .env con endpoint real de RDS
             cat > .env << EOF
             DB_HOST=${DB_HOST}
             DB_USER=${DB_USER}

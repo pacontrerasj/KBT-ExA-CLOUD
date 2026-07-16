@@ -21,10 +21,8 @@ data "aws_ami" "amazon_linux" {
 
 # ──── User Data: instalar Docker, Docker Compose, AWS CLI y preparar la app ────
 
-data "template_file" "user_data" {
-  template = file("${path.module}/user_data.sh")
-
-  vars = {
+locals {
+  user_data = templatefile("${path.module}/user_data.sh", {
     db_host     = var.db_host
     db_user     = var.db_user
     db_password = var.db_password
@@ -32,7 +30,7 @@ data "template_file" "user_data" {
     db_port     = var.db_port
     aws_account_id = var.aws_account_id
     aws_region  = var.aws_region
-  }
+  })
 }
 
 # ──── Instancia EC2 ────
@@ -43,7 +41,7 @@ resource "aws_instance" "ec2" {
   subnet_id              = var.subnet_id
   vpc_security_group_ids = [var.sg_ec2_id]
   key_name               = var.key_name
-  user_data              = data.template_file.user_data.rendered
+  user_data              = local.user_data
   user_data_replace_on_change = true
 
   root_block_device {
