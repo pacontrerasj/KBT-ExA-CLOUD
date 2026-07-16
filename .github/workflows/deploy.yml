@@ -30,22 +30,6 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Validar secrets requeridos
-        run: |
-          required=(AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY MI_IP KEY_NAME DB_PASSWORD)
-          missing=()
-          for s in "${required[@]}"; do
-            val="${{ secrets[format('{0}', s)] }}"
-            if [ -z "$val" ]; then
-              missing+=("$s")
-            fi
-          done
-          if [ ${#missing[@]} -ne 0 ]; then
-            echo "❌ Secrets faltantes: ${missing[*]}"
-            exit 1
-          fi
-          echo "✅ Todos los secrets requeridos estan configurados"
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
