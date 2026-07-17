@@ -167,6 +167,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "tienda-vehiculos-EC2/docker-compose.yml"
           target: ${{ env.APP_DIR }}/
+          strip_components: 1
 
       - name: Deploy via SSH a EC2
         uses: appleboy/ssh-action@v1.0.3
