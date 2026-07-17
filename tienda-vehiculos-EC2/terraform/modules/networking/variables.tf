@@ -14,7 +14,7 @@ variable "azs" {
 }
 
 variable "mi_ip" {
-  description = "Tu IP publica en formato CIDR (ej: 201.123.45.67/32). Permite SSH a la EC2"
+  description = "Tu IP publica en formato CIDR (ej: 201.123.45.67/32). Mantenido por compatibilidad"
   type        = string
 
   validation {

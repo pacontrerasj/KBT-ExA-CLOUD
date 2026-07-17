@@ -112,11 +112,11 @@ resource "aws_security_group" "sg_ec2" {
   vpc_id      = local.vpc_id
 
   ingress {
-    description = "SSH desde mi IP"
+    description = "SSH desde cualquier origen"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [var.mi_ip]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
